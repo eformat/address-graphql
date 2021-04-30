@@ -31,8 +31,7 @@ public class AddressResource {
 
     @Query
     @Description("Search addresses by buildingNumber or Locality")
-    public List<Address> addresses(@Name("numLoc") String numLoc) {
-        Optional<Integer> size = Optional.of(2);
+    public List<Address> addresses(@Name("numLoc") String numLoc, @Name("size") Optional<Integer> size) {
         return searchSession.search(Address.class)
                 .where(f ->
                         numLoc == null || numLoc.trim().isEmpty() ?
