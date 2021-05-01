@@ -35,7 +35,7 @@ public class AddressResource {
     }
 
     @Query
-    @Description("Search addresses by buildingNumber or Locality")
+    @Description("Search addresses by street name or number")
     public List<Address> addresses(@Name("num") String num, @Name("loc") String loc, @Name("size") Optional<Integer> size) {
         return searchSession.search(Address.class)
                 .extension(ElasticsearchExtension.get())
@@ -43,25 +43,25 @@ public class AddressResource {
                         f.matchAll() // search all if both empty
                         : ((num == null || num.trim().isEmpty()) && (loc != null || !loc.trim().isEmpty())) ? // search by location only
                         f.simpleQueryString()
-                                .field("dependentLocality")
+                                .field("street_name")
                                 .matching(loc.toLowerCase() + "*") // wildcard predicate
                                 .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
                         : ((num != null || !num.trim().isEmpty()) && (loc == null || loc.trim().isEmpty())) ? // search by number only
                         f.simpleQueryString()
-                                .field("buildingNumber")
+                                .field("number_first")
                                 .matching(num.toLowerCase() + "*") // wildcard predicate
                                 .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
                         : // search by number and location using logical ~OR
                         f.bool()
                                 .should(f.simpleQueryString()
-                                        .field("buildingNumber")
+                                        .field("number_first")
                                         .matching(num + "*")) // wildcard predicate
                                 .must(f.simpleQueryString()
-                                        .field("dependentLocality") //.boost(2.0f)// boost location score
+                                        .field("street_name") //.boost(2.0f)// boost location score
                                         .matching(loc.toLowerCase() + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
                                 ))
-                .sort(f -> f.field("buildingNumber_sort").then().field("dependentLocality_sort"))
+                .sort(f -> f.field("number_first_sort").then().field("street_name_sort"))
                 .fetchHits(size.orElse(20));
     }
 }

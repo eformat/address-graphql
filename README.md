@@ -12,7 +12,7 @@ Run the app
 mvn quarkus:dev
 ```
 
-The Address class format is a form of PAF (Postal Address File). 
+The Address format is from AUS GNAF Dataset 
 
 - Kibana available on `localhost:5601`
 - GraphQL UI available on `locahost:8080`

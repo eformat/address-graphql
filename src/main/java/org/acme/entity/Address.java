@@ -6,38 +6,62 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextFi
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
+import javax.persistence.Convert;
 import javax.persistence.Entity;
+import java.util.Date;
 import java.util.Objects;
 
 @Entity
 @Indexed
 public class Address extends PanacheEntity {
 
-    // premises elements
-    public String subBuildingName;
-    public String buildingName;
+    public String address_detail_pid;
+    public String street_locality_pid;
+    public String locality_pid;
+    public String building_name;
+    public String lot_number_prefix;
+    public String lot_number;
+    public String lot_number_suffix;
+    public String flat_type;
+    public String flat_number_prefix;
+    public Integer flat_number;
+    public String flat_number_suffix;
+    public String level_type;
+    public String level_number_prefix;
+    public Integer level_number;
+    public String level_number_suffix;
+    public String number_first_prefix;
 
     @FullTextField(analyzer = "number")
-    @KeywordField(name = "buildingNumber_sort", sortable = Sortable.YES, normalizer = "sort")
-    public String buildingNumber;
-    public String organisation;
-    public String department;
-    public String poBoxNumber;
+    @KeywordField(name = "number_first_sort", sortable = Sortable.YES, normalizer = "sort")
+    public String number_first;
 
-    // throughfare elements
-    public String throughfare;
-    public String dependentThroughfare;
+    public String number_first_suffix;
+    public String number_last_prefix;
+    public Integer number_last;
+    public String number_last_suffix;
 
-    // locality elements
-    public String doubleDependentLocality;
 
     @FullTextField(analyzer = "location")
-    @KeywordField(name = "dependentLocality_sort", sortable = Sortable.YES, normalizer = "sort")
-    public String dependentLocality;
-    public String postTown;
+    @KeywordField(name = "street_name_sort", sortable = Sortable.YES, normalizer = "sort")
+    public String street_name;
 
-    // postcode element
+    public String street_class_code;
+    public String street_class_type;
+    public String street_type_code;
+    public String street_suffix_code;
+    public String street_suffix_type;
+    public String locality_name;
+    public String state_abbreviation;
     public String postcode;
+    public Double latitude;
+    public Double longitude;
+    public String geocode_type;
+    public Integer confidence;
+    public String alias_principal;
+    public String primary_secondary;
+    public String legal_parcel_id;
+    public Date date_created;
 
     @Override
     public boolean equals(Object o) {
@@ -56,23 +80,3 @@ public class Address extends PanacheEntity {
         return 31;
     }
 }
-
-/*
-// https://github.com/steinfletcher/paf-address-format/blob/master/src/test/java/com/steinf/pafaddressformat/DeliveryPointTest.java
-
-    DeliveryPoint deliveryPoint = new DeliveryPoint.Builder()
-        .withSubBuildingName("FLAT 1")
-        .withBuildingName("VICTORIA HOUSE")
-        .withBuildingNumber("15")
-        .withDependentLocality("COOMBE BISSETT")
-        .withOrganisation("SURE FIT COVERS")
-        .withDepartment("EMERGENCY")
-        .withPoBoxNumber("1242")
-        .withDoubleDependentLocality("TYRE INDUSTRIAL ESTATE")
-        .withDependentThroughfare("CHESHUNT MEWS")
-        .withThroughfare("CYPRESS STREET")
-        .withPostcode("CV3 3GU")
-        .withPostTown("COVENTRY")
-        .build();
- */
-
