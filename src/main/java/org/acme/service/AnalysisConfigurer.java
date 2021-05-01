@@ -15,11 +15,16 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
         context.analyzer("number").custom()
                 .tokenizer("standard")
-                .tokenFilters("asciifolding", "lowercase", "porter_stem");
+                .tokenFilters("asciifolding", "lowercase");
 
         context.analyzer("location").custom()
-                .tokenizer("standard")
-                .tokenFilters("asciifolding", "lowercase", "porter_stem");
+                .tokenizer("standard") // edge_ngram
+                .tokenFilters("asciifolding", "lowercase");//, "truncate", "edge_ngram_filter"); // , "porter_stem" "edge_ngram"
+
+//        context.tokenFilter("edge_ngram_filter")
+//                .type("edgeNGram")
+//                .param("max_gram", 15)
+//                .param("min_gram", 1);
 
         context.normalizer("sort").custom()
                 .tokenFilters("asciifolding", "lowercase");
