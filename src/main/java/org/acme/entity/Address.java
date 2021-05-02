@@ -1,6 +1,7 @@
 package org.acme.entity;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
+import org.hibernate.search.engine.backend.types.Searchable;
 import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
@@ -33,7 +34,7 @@ public class Address extends PanacheEntity {
     public String number_first_prefix;
 
     @FullTextField(analyzer = "number")
-    @KeywordField(name = "number_first_sort", sortable = Sortable.YES, normalizer = "sort")
+    @KeywordField(name = "number_first_sort", searchable = Searchable.YES, sortable = Sortable.YES, normalizer = "sort")
     public String number_first;
 
     public String number_first_suffix;
@@ -43,7 +44,7 @@ public class Address extends PanacheEntity {
 
 
     @FullTextField(analyzer = "location")
-    @KeywordField(name = "street_name_sort", sortable = Sortable.YES, normalizer = "sort")
+    @KeywordField(name = "street_name_sort", searchable = Searchable.YES, sortable = Sortable.YES, normalizer = "sort")
     public String street_name;
 
     public String street_class_code;

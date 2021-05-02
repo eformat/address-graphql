@@ -53,8 +53,8 @@ public class AddressResource {
                                 .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
                         : // search by number and location using logical ~OR
                         f.bool()
-                                .should(f.simpleQueryString()
-                                        .field("number_first")
+                                .must(f.simpleQueryString()
+                                        .field("number_first").boost(2.0f) // boost location score
                                         .matching(num + "*")) // wildcard predicate
                                 .must(f.simpleQueryString()
                                         .field("street_name") //.boost(2.0f)// boost location score
