@@ -2,6 +2,7 @@ package org.acme.service;
 
 import io.quarkus.runtime.StartupEvent;
 import org.acme.entity.Address;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
@@ -28,11 +29,15 @@ public class AddressResource {
     @Inject
     SearchSession searchSession;
 
+    @ConfigProperty(name = "quarkus.hibernate-search-orm.schema-management.strategy")
+    String indexLoadStrategy;
+
     @Transactional
     void onStart(@Observes StartupEvent ev) throws InterruptedException {
         // only reindex if we imported some content
-        if (Address.count() > 0) {
+        if (Address.count() > 0 && !indexLoadStrategy.equals("none")) {
             searchSession.massIndexer()
+                    .batchSizeToLoadObjects(100000)
                     .startAndWait();
         }
     }
