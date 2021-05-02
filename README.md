@@ -39,3 +39,5 @@ end;
 ```
 
 Also tested against 3 million gnaf records without issue. Full set for Australia has 14m+ using `pg_dump` with binary file.
+
+![grapql-index.png](images/graphql-index.png)
