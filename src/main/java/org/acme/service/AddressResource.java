@@ -43,22 +43,20 @@ public class AddressResource {
         Pattern digits = Pattern.compile("([0-9]+)"); // digits
         Matcher matchDigits = digits.matcher(search);
         String num = new String();
-        while(matchDigits.find()) {
-            log.info(">>> Digits" + matchDigits);
+        while (matchDigits.find()) {
             num = matchDigits.group(0);
         }
         String finalNum = num;
-        log.info(">>> Final Digits " + finalNum);
+        log.debug(">>> Final Digits " + finalNum);
 
         Pattern words = Pattern.compile("([\\D\\s]+)"); // non digits and whitespaces
         Matcher matchWords = words.matcher(search);
         String loc = new String();
-        if(matchWords.find()) {
-            log.info(">>> Words" + matchWords.group());
+        if (matchWords.find()) {
             loc = matchWords.group();
         }
         String finalLoc = loc;
-        log.info(">>> Final Words " + finalLoc);
+        log.debug(">>> Final Words " + finalLoc);
 
         return searchSession.search(Address.class)
                 .extension(ElasticsearchExtension.get())

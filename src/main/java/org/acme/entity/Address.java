@@ -7,7 +7,6 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextFi
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.KeywordField;
 
-import javax.persistence.Convert;
 import javax.persistence.Entity;
 import java.util.Date;
 import java.util.Objects;
