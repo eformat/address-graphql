@@ -40,4 +40,12 @@ end;
 
 Also tested against 3 million gnaf records without issue. Full set for Australia has 14m+ using `pg_dump` with binary file.
 
+```bash
+pg_restore -h localhost -d quarkus_test -U quarkus_test -v ~/tmp/address.dmp
+# dont reload database
+quarkus.hibernate-orm.database.generation=none
+# dont reload es-index
+quarkus.hibernate-search-orm.schema-management.strategy=none
+```
+
 ![grapql-index.png](images/graphql-index.png)
