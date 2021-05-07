@@ -43,7 +43,7 @@ public class AddressResource {
     }
 
     @Query
-    @Description("Search addresses by street name or number")
+    @Description("Search addresses by street number, name, type, suburb")
     public List<Address> addresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
         Pattern words = Pattern.compile("^(\\d*)\\s*([a-zA-Z]+)\\s?([a-zA-Z]+)?\\s?([a-zA-Z\\s]+)?"); // 29 foobar street cullomore hills
         Matcher matchWords = words.matcher(search);
