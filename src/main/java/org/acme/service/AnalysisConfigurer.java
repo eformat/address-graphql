@@ -21,6 +21,14 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .tokenizer("standard") // edge_ngram
                 .tokenFilters("asciifolding", "lowercase");//, "truncate", "edge_ngram_filter"); // , "porter_stem" "edge_ngram"
 
+        context.analyzer("streetType").custom()
+                .tokenizer("standard") // edge_ngram
+                .tokenFilters("asciifolding", "lowercase");
+
+        context.analyzer("suburb").custom()
+                .tokenizer("standard") // edge_ngram
+                .tokenFilters("asciifolding", "lowercase");
+
 //        context.tokenFilter("edge_ngram_filter")
 //                .type("edgeNGram")
 //                .param("max_gram", 15)

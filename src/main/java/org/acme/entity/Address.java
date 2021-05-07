@@ -41,17 +41,23 @@ public class Address extends PanacheEntity {
     public Integer number_last;
     public String number_last_suffix;
 
-
     @FullTextField(analyzer = "location")
     @KeywordField(name = "street_name_sort", searchable = Searchable.YES, sortable = Sortable.YES, normalizer = "sort")
     public String street_name;
 
     public String street_class_code;
     public String street_class_type;
+
+    @FullTextField(analyzer = "streetType")
+    @KeywordField(name = "street_type_sort", searchable = Searchable.YES, sortable = Sortable.NO)
     public String street_type_code;
     public String street_suffix_code;
     public String street_suffix_type;
+
+    @FullTextField(analyzer = "suburb")
+    @KeywordField(name = "locality_sort", searchable = Searchable.YES, sortable = Sortable.YES, normalizer = "sort")
     public String locality_name;
+
     public String state_abbreviation;
     public String postcode;
     public Double latitude;

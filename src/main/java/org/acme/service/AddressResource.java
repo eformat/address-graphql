@@ -45,48 +45,78 @@ public class AddressResource {
     @Query
     @Description("Search addresses by street name or number")
     public List<Address> addresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        Pattern digits = Pattern.compile("([0-9]+)"); // digits
-        Matcher matchDigits = digits.matcher(search);
-        String num = new String();
-        while (matchDigits.find()) {
-            num = matchDigits.group(0);
-        }
-        String finalNum = num;
-        log.debug(">>> Final Digits " + finalNum);
-
-        Pattern words = Pattern.compile("([\\D\\s]+)"); // non digits and whitespaces
+        Pattern words = Pattern.compile("^(\\d+)\\s+([a-zA-Z]+)\\s?([a-zA-Z]+)?\\s?([a-zA-Z\\s]+)?"); // 29 crompton street kenmore hills
         Matcher matchWords = words.matcher(search);
+        String num = new String();
         String loc = new String();
+        String street = new String();
+        String suburb = new String();
         if (matchWords.find()) {
-            loc = matchWords.group();
+            num = matchWords.group(1);
+            loc = matchWords.group(2);
+            street = matchWords.group(3);
+            suburb = matchWords.group(4);
         }
-        String finalLoc = loc;
-        log.debug(">>> Final Words " + finalLoc);
+        String finalNum = (num != null ? num : new String());
+        String finalLoc = (loc != null ? loc : new String());
+        String finalStreet = (street != null ? street : new String());
+        String finalSuburb = (suburb != null ? suburb : new String());;
+        log.debug(">>> Final Words: " + finalNum + " " + finalLoc + " " + finalStreet + " " + finalSuburb);
 
         return searchSession.search(Address.class)
                 .extension(ElasticsearchExtension.get())
-                .where(f -> ((finalNum == null || finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty())) ?
-                        f.matchAll() // search all if both empty
-                        : ((finalNum == null || finalNum.trim().isEmpty()) && (finalLoc != null || !finalLoc.trim().isEmpty())) ? // search by location only
+                .where(f -> ((finalNum == null || finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty()) && (finalStreet == null || finalStreet.trim().isEmpty()) && (finalSuburb == null || finalSuburb.trim().isEmpty())) ?
+                        f.matchAll() // search all if all empty
+                        : ((finalNum == null || finalNum.trim().isEmpty()) && (finalStreet == null || finalStreet.trim().isEmpty()) && (finalSuburb == null || finalSuburb.trim().isEmpty()) && (finalLoc != null || !finalLoc.trim().isEmpty())) ? // search by location only
                         f.simpleQueryString()
                                 .field("street_name")
-                                .matching(finalLoc.toLowerCase() + "*") // wildcard predicate
+                                .matching(finalLoc.toLowerCase().trim() + "*") // wildcard predicate
                                 .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
-                        : ((finalNum != null || !finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty())) ? // search by number only
+                        : ((finalNum != null || !finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty()) && (finalStreet == null || finalStreet.trim().isEmpty()) && (finalSuburb == null || finalSuburb.trim().isEmpty())) ? // search by number only
                         f.simpleQueryString()
                                 .field("number_first")
                                 .matching(finalNum.toLowerCase() + "*") // wildcard predicate
                                 .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
-                        : // search by number and location using logical ~AND
+                        : ((finalNum == null || finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty()) && (finalStreet != null || !finalStreet.trim().isEmpty()) && (finalSuburb == null || finalSuburb.trim().isEmpty())) ? // search by street type only
+                        f.simpleQueryString()
+                                .field("street_type_code")
+                                .matching(finalStreet.toLowerCase() + "*") // wildcard predicate
+                                .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
+                        : ((finalNum == null || finalNum.trim().isEmpty()) && (finalLoc == null || finalLoc.trim().isEmpty()) && (finalStreet == null || finalStreet.trim().isEmpty()) && (finalSuburb != null || !finalSuburb.trim().isEmpty())) ? // search by suburb only
+                        f.simpleQueryString()
+                                .field("locality_name")
+                                .matching(finalStreet.toLowerCase() + "*") // wildcard predicate
+                                .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
+                        : ((finalNum != null || !finalNum.trim().isEmpty()) && (finalLoc != null || !finalLoc.trim().isEmpty()) && (finalStreet != null || !finalStreet.trim().isEmpty()) && (finalSuburb == null || finalSuburb.trim().isEmpty())) ? // search by number, street name, street type
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("number_first").boost(2.0f) // boost location score
                                         .matching(finalNum + "*")) // wildcard predicate
                                 .must(f.simpleQueryString()
                                         .field("street_name") //.boost(2.0f)// boost location score
-                                        .matching(finalLoc.toLowerCase() + "*") // wildcard predicate
+                                        .matching(finalLoc.toLowerCase().trim() + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
-                                ))
+                                )
+                                .must(f.simpleQueryString()
+                                        .field("street_type_code")
+                                        .matching(finalStreet + "*")) // wildcard predicate
+                        : // search everything ~logical AND
+                        f.bool()
+                                .must(f.simpleQueryString()
+                                        .field("number_first").boost(2.0f) // boost location score
+                                        .matching(finalNum + "*")) // wildcard predicate
+                                .must(f.simpleQueryString()
+                                        .field("street_name") //.boost(2.0f)// boost location score
+                                        .matching(finalLoc.toLowerCase().trim() + "*") // wildcard predicate
+                                        .defaultOperator(BooleanOperator.AND) // default is OR, we want and for wildcard
+                                )
+                                .must(f.simpleQueryString()
+                                        .field("street_type_code")
+                                        .matching(finalStreet + "*")) // wildcard predicate
+                                .must(f.simpleQueryString()
+                                        .field("locality_name")
+                                        .matching(finalSuburb + "*")) // wildcard predicate
+                )
                 .sort(f -> f.field("number_first_sort").then().field("street_name_sort"))
                 .fetchHits(size.orElse(20));
     }
