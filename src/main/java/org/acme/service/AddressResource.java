@@ -45,7 +45,7 @@ public class AddressResource {
     @Query
     @Description("Search addresses by street name or number")
     public List<Address> addresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        Pattern words = Pattern.compile("^(\\d+)\\s+([a-zA-Z]+)\\s?([a-zA-Z]+)?\\s?([a-zA-Z\\s]+)?"); // 29 foobar street cullomore hills
+        Pattern words = Pattern.compile("^(\\d*)\\s*([a-zA-Z]+)\\s?([a-zA-Z]+)?\\s?([a-zA-Z\\s]+)?"); // 29 foobar street cullomore hills
         Matcher matchWords = words.matcher(search);
         String num = new String();
         String loc = new String();
