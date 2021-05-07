@@ -2,6 +2,7 @@ package org.acme.service;
 
 import io.quarkus.runtime.StartupEvent;
 import org.acme.entity.Address;
+import org.acme.entity.StreetType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
@@ -45,22 +46,26 @@ public class AddressResource {
     @Query
     @Description("Search addresses by street number, name, type, suburb")
     public List<Address> addresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        Pattern words = Pattern.compile("^(\\d*)\\s*([a-zA-Z]+)\\s?([a-zA-Z]+)?\\s?([a-zA-Z\\s]+)?"); // 29 foobar street cullomore hills
-        Matcher matchWords = words.matcher(search);
+        Pattern address = Pattern.compile("^(\\d+)?\\s?(.*)$"); // digit, optional space, rest words
+        Matcher matchAddress = address.matcher(search);
         String num = new String();
-        String loc = new String();
-        String street = new String();
-        String suburb = new String();
-        if (matchWords.find()) {
-            num = matchWords.group(1);
-            loc = matchWords.group(2);
-            street = matchWords.group(3);
-            suburb = matchWords.group(4);
+        String rest = new String();
+        if (matchAddress.find()) {
+            num = matchAddress.group(1);
+            rest = matchAddress.group(2);
+        }
+        // check if rest words matches street types
+        String[] parts = {"", ""};
+        String finalStreet = StreetType.instance().matches(search);
+        if (finalStreet != null && !finalStreet.trim().isEmpty()) {
+            // andrew campbell drive
+            parts = rest.split(finalStreet, -1);
+        } else {
+            parts[0] = rest;
         }
         String finalNum = (num != null ? num : new String());
-        String finalLoc = (loc != null ? loc : new String());
-        String finalStreet = (street != null ? street : new String());
-        String finalSuburb = (suburb != null ? suburb : new String());;
+        String finalLoc = (parts[0] != null ? parts[0] : new String());
+        String finalSuburb = (parts[1] != null ? parts[1] : new String());
         log.debug(">>> Final Words: " + finalNum + " " + finalLoc + " " + finalStreet + " " + finalSuburb);
 
         return searchSession.search(Address.class)
