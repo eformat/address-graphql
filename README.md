@@ -19,9 +19,14 @@ The Address format is from AUS GNAF Dataset
 
 ![grapql-ui.png](images/address-graphql.gif)
 
-Search by:
-- street number, street name, street type, suburb(locality)
+Search by an ordered address entry:
+- flat number (optional partial match), street number (optional partial match), street name (optional partial match), street type (optional complete match), suburb(optional partial match)
 - graphql to prevent over fetching of result data
+
+e.g. search for a flat or unit
+```aidl
+45/15 breaker street main beach
+```
 
 Data Set based on Australia - G-NAF - Geoscape Geocoded National Address File (G-NAF)
 - https://data.gov.au/dataset/ds-dga-19432f89-dc3a-4ef3-b943-5326ef1dbecc/details?q=

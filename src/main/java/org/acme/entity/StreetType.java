@@ -1,6 +1,6 @@
 package org.acme.entity;
 
-import java.util.HashSet;
+import java.util.*;
 
 /*
 quarkus_test=# select distinct street_type_code from address;
@@ -219,11 +219,37 @@ public class StreetType {
     }
 
     public static String matches(String search) {
-        for(String stype : streetType){
-            if (search.contains(stype)) {
-                return stype;
+        String ret = new String();
+        HashMap<Integer, String> matches = new HashMap();
+        for (String stype : streetType) {
+            if (search.contains(stype.concat(" "))) {
+                matches.put(search.lastIndexOf(stype.concat(" ")), stype);
+            } else if (search.endsWith(stype)) {
+                matches.put(search.lastIndexOf(stype), stype);
             }
         }
-        return new String();
+        // "breaker street main beach" - do we match street or beach? answer street
+        // "hill end road glenella" - do we match end or road? - answer road
+        // "oyster cove promenade" - do we match cove or promenade? - answer promenade
+        // return most right positioned / max streetType
+        if (!matches.isEmpty()) {
+            int max = (Collections.max(matches.keySet()));
+            ret = matches.get(max);
+//            // if its the last term, do we have another?
+//            if(search.endsWith(ret) && matches.size() == 2) {
+//                int min = (Collections.min(matches.keySet()));
+//                return matches.get(min);
+//            }
+//            // okay we have 3 or more matching, take (end-1) term
+//            if(search.endsWith(ret) && matches.size() > 2 ) {
+//                SortedSet<Integer> set = new TreeSet<Integer>();
+//                for (int i: matches.keySet()) {
+//                    set.add(i);
+//                }
+//                set.remove(set.last());
+//                return matches.get(set.last());
+//            }
+        }
+        return ret;
     }
 }
