@@ -73,12 +73,15 @@ public class AddressResource {
         String rest = new String();
         if (matchAddress.find()) {
             num = matchAddress.group(1);
-            if (matchAddress.group(2) != null && matchAddress.group(2).equals("/") && matchAddress.group(3) == null) {
-                // special case where we search for "22/" i.e. the start of a flat/unit/shop
-                flat = matchAddress.group(1);
-                num = null;
-            } else {
-                flat = matchAddress.group(3);
+            if (matchAddress.group(2) != null && matchAddress.group(2).equals("/")) {
+                if (matchAddress.group(3) == null) {
+                    // special case where we search for "22/" i.e. the start of a flat/unit/shop
+                    flat = matchAddress.group(1);
+                    num = null;
+                } else {
+                    flat = matchAddress.group(1);
+                    num = matchAddress.group(3);
+                }
             }
             rest = matchAddress.group(4);
         }
@@ -139,7 +142,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("number_first")
@@ -159,7 +162,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("street_name").boost(2.0f) // boost location score
@@ -193,7 +196,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("street_name").boost(2.0f) // boost location score
@@ -221,7 +224,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("number_first").boost(2.0f)
@@ -235,7 +238,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("number_first").boost(2.0f)
@@ -289,7 +292,7 @@ public class AddressResource {
                         f.bool()
                                 .must(f.simpleQueryString()
                                         .field("flat_number")
-                                        .matching(finalNum + "*") // wildcard predicate
+                                        .matching(finalFlat + "*") // wildcard predicate
                                         .defaultOperator(BooleanOperator.AND)) // default is OR, we want and for wildcard)
                                 .must(f.simpleQueryString()
                                         .field("number_first").boost(2.0f)
