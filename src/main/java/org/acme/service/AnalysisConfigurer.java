@@ -40,5 +40,9 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
         context.normalizer("sort").custom()
                 .tokenFilters("asciifolding", "lowercase");
+
+        context.analyzer("address").custom()
+                .tokenizer("standard") // edge_ngram
+                .tokenFilters("asciifolding", "lowercase", "ngram");
     }
 }

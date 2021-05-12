@@ -2,6 +2,7 @@ package org.acme.service;
 
 import io.quarkus.runtime.StartupEvent;
 import org.acme.entity.Address;
+import org.acme.entity.OneAddress;
 import org.acme.entity.StreetType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.graphql.Description;
@@ -41,6 +42,20 @@ public class AddressResource {
                     .batchSizeToLoadObjects(100000)
                     .startAndWait();
         }
+    }
+
+    @Query
+    @Description("Search oneaddress by search term")
+    public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
+        String finalSearch = search.trim().toLowerCase();
+
+        return searchSession.search(OneAddress.class)
+                .extension(ElasticsearchExtension.get())
+                .where(f-> finalSearch.isBlank() ? f.matchAll()
+                        : f.simpleQueryString()
+                        .field("address")
+                        .matching(finalSearch))
+                .fetchHits(size.orElse(20));
     }
 
     /*
