@@ -47,8 +47,7 @@ begin;
 end;
 ```
 
-Also tested against 3 million gnaf records without issue. Full set for Australia has 14m+ using `pg_dump` with binary file.
-
+Also tested against different size data sets - 3+ million (all QLD addresses) and 15+ million (all AUS) gnaf records without issue.
 ```bash
 pg_restore -h localhost -d quarkus_test -U quarkus_test -v ~/tmp/address.dmp
 # dont reload database
