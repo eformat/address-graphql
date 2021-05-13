@@ -1,5 +1,10 @@
 package org.acme.service;
 
+import com.arjuna.ats.internal.jdbc.drivers.modifiers.list;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.quarkus.runtime.StartupEvent;
 import org.acme.entity.Address;
 import org.acme.entity.OneAddress;
@@ -9,12 +14,8 @@ import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 import org.eclipse.microprofile.graphql.Query;
-import org.elasticsearch.client.indices.PutIndexTemplateRequest;
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.settings.Settings;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
+import org.hibernate.search.backend.elasticsearch.search.query.ElasticsearchSearchResult;
 import org.hibernate.search.engine.search.common.BooleanOperator;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.slf4j.Logger;
@@ -23,10 +24,10 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,13 +62,35 @@ public class AddressResource {
     public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
         String finalSearch = search.trim().toLowerCase();
         log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
-        return searchSession.search(OneAddress.class)
+
+        ElasticsearchSearchResult<OneAddress> result = searchSession.search(OneAddress.class)
                 .extension(ElasticsearchExtension.get())
-                .where(f-> finalSearch.isBlank() ? f.matchAll()
-                        : f.simpleQueryString()
-                        .field("address")
-                        .matching(finalSearch))
-                .fetchHits(size.orElse(20));
+                .where(f -> f.matchAll())
+                .requestTransformer(context -> {
+                    JsonObject body = context.body();
+                    body.add("suggest", jsonObject(suggest -> {
+                        suggest.add("address", jsonObject(mySuggest -> {
+                            mySuggest.addProperty("prefix", finalSearch);
+                            mySuggest.add("completion", jsonObject(term -> {
+                                term.addProperty("field", "address_suggest");
+                            }));
+                        }));
+                    }));
+                })
+                .fetch(20);
+
+        JsonArray suggestions = result.responseBody()
+                .getAsJsonObject("suggest")
+                .getAsJsonArray("address").get(0).getAsJsonObject()
+                .getAsJsonArray("options");
+
+        List<OneAddress> list = new ArrayList<>();
+        for (JsonElement element : suggestions) {
+            OneAddress address = new OneAddress();
+            address.setAddress(element.getAsJsonObject().get("text").getAsString());
+            list.add(address);
+        }
+        return list;
     }
 
     /*
@@ -342,5 +365,11 @@ public class AddressResource {
                 .sort(f -> (finalFlat.isEmpty() ? f.field("number_first_sort").then().field("street_name_sort")
                         : f.field("number_first_sort").then().field("flat_number_sort").then().field("street_name_sort")))
                 .fetchHits(size.orElse(20));
+    }
+
+    private static JsonObject jsonObject(Consumer<JsonObject> instructions) {
+        JsonObject object = new JsonObject();
+        instructions.accept(object);
+        return object;
     }
 }

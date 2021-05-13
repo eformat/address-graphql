@@ -13,6 +13,10 @@ import javax.persistence.Entity;
 public class OneAddress extends PanacheEntity {
 
     @FullTextField(analyzer = "address")
-    @NonStandardField(name = "address_completion", valueBinder = @ValueBinderRef(type = CompletionBinder.class))
+    @NonStandardField(name = "address_suggest", valueBinder = @ValueBinderRef(type = CompletionBinder.class))
     public String address;
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
 }
