@@ -23,7 +23,7 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
         context.analyzer("location").custom()
                 .tokenizer("standard") // edge_ngram
-                .tokenFilters("asciifolding", "lowercase", "edge_ngram");//, "truncate", "edge_ngram_filter"); // , "porter_stem" "edge_ngram"
+                .tokenFilters("asciifolding", "lowercase", "ngram");//, "truncate", "edge_ngram_filter"); // , "porter_stem" "edge_ngram"
 
         context.analyzer("streetType").custom()
                 .tokenizer("standard") // edge_ngram
@@ -31,18 +31,18 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
 
         context.analyzer("suburb").custom()
                 .tokenizer("standard") // edge_ngram
-                .tokenFilters("asciifolding", "lowercase", "edge_ngram");
-
-        context.tokenFilter("edge_ngram")
-                .type("edge_ngram")
-                .param("max_gram", 8)
-                .param("min_gram", 2);
+                .tokenFilters("asciifolding", "lowercase", "ngram");
 
         context.normalizer("sort").custom()
                 .tokenFilters("asciifolding", "lowercase");
 
         context.analyzer("address").custom()
-                .tokenizer("standard") // edge_ngram
+                .tokenizer("whitespace") // edge_ngram
                 .tokenFilters("asciifolding", "lowercase", "ngram");
+
+        context.tokenFilter("ngram")
+                .type("ngram")
+                .param("max_gram", 20)
+                .param("min_gram", 2);
     }
 }
