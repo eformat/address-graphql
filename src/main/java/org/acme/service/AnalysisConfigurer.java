@@ -40,9 +40,13 @@ public class AnalysisConfigurer implements ElasticsearchAnalysisConfigurer {
                 .tokenizer("whitespace") // edge_ngram
                 .tokenFilters("asciifolding", "lowercase", "ngram");
 
+        context.analyzer("whitespace").custom()
+                .tokenizer("whitespace") // edge_ngram
+                .tokenFilters("asciifolding", "lowercase");
+
         context.tokenFilter("ngram")
                 .type("ngram")
-                .param("max_gram", 20)
+                .param("max_gram", 6)
                 .param("min_gram", 2);
     }
 }

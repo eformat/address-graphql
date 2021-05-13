@@ -63,9 +63,13 @@ public class AddressResource {
         String finalSearch = search.trim().toLowerCase();
         log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
 
-        ElasticsearchSearchResult<OneAddress> result = searchSession.search(OneAddress.class)
+        ElasticsearchSearchResult<JsonObject> result = searchSession.search(OneAddress.class)
                 .extension(ElasticsearchExtension.get())
-                .where(f -> f.matchAll())
+                .select( f -> f.source() )
+                .where(f -> f.match()
+                        .field( "address")
+                        .matching(finalSearch)
+                )
                 .requestTransformer(context -> {
                     JsonObject body = context.body();
                     body.add("suggest", jsonObject(suggest -> {
@@ -77,7 +81,11 @@ public class AddressResource {
                         }));
                     }));
                 })
-                .fetch(20);
+                .fetch(size.orElse(20));
+
+        JsonArray matches = result.responseBody()
+                .getAsJsonObject("hits")
+                .getAsJsonArray("hits");
 
         JsonArray suggestions = result.responseBody()
                 .getAsJsonObject("suggest")
@@ -85,6 +93,11 @@ public class AddressResource {
                 .getAsJsonArray("options");
 
         List<OneAddress> list = new ArrayList<>();
+        for (JsonElement element : matches) {
+            OneAddress address = new OneAddress();
+            address.setAddress(element.getAsJsonObject().get("_source").getAsJsonObject().get("address").getAsString());
+            list.add(address);
+        }
         for (JsonElement element : suggestions) {
             OneAddress address = new OneAddress();
             address.setAddress(element.getAsJsonObject().get("text").getAsString());

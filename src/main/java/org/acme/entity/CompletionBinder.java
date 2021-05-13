@@ -19,7 +19,7 @@ public class CompletionBinder implements ValueBinder {
                 context.typeFactory()
                         .extension(ElasticsearchExtension.get())
                         .asNative()
-                        .mapping("{\"type\": \"completion\", \"analyzer\" : \"address\"}")
+                        .mapping("{\"type\": \"completion\", \"analyzer\" : \"address\"}") // \"search_analyzer\": \"whitespace\"
         );
     }
 
