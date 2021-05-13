@@ -55,7 +55,7 @@ public class AddressResource {
     @Description("Search oneaddress by search term")
     public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
         String finalSearch = search.trim().toLowerCase();
-
+        log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
         return searchSession.search(OneAddress.class)
                 .extension(ElasticsearchExtension.get())
                 .where(f-> finalSearch.isBlank() ? f.matchAll()
