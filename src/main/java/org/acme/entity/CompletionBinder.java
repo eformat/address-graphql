@@ -19,8 +19,9 @@ public class CompletionBinder implements ValueBinder {
                 context.typeFactory()
                         .extension(ElasticsearchExtension.get())
                         .asNative()
-                        .mapping("{\"type\": \"completion\", \"analyzer\" : \"address\"}") // \"search_analyzer\": \"whitespace\"
+                        .mapping("{\"type\": \"completion\", \"analyzer\" : \"whitespace\"}")
         );
+        // changing analyzer(whitespace -> address) gives GB of index size !
     }
 
     private static class CompletionBridge implements ValueBridge<String, JsonElement> {
