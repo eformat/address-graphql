@@ -51,6 +51,11 @@ public class AddressResource {
         }
     }
 
+    /*
+      Search using elastic completion suggester.
+      We want ONE call to ES here to keep things fast.
+      This requires the data is engineered into a single oneaddress.address text field first.
+     */
     @Query
     @Description("Search oneaddress by search term")
     public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
@@ -66,7 +71,8 @@ public class AddressResource {
     }
 
     /*
-      The main search service call. We want ONE call to ES here to keep things fast.
+      Search by individual fields. Raw data provided in this format, so very little pre-processsing.
+      We want ONE call to ES here to keep things fast.
       We do some pre-processing on the search term, and we assume the caller is hitting search on each character input.
       Wildcard match performed on numbers. Fuzzy() matching performed on each name type term, so can handle spelling mistakes.
 
