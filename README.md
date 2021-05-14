@@ -19,15 +19,6 @@ The Address format is from AUS GNAF Dataset
 
 ![grapql-ui.png](images/address-graphql.gif)
 
-Search by an ordered address entry:
-- flat number (optional partial match), street number (optional partial match), street name (optional partial match), street type (optional complete match), suburb(optional partial match)
-- graphql to prevent over fetching of result data
-
-e.g. search for a flat or unit
-```aidl
-45/15 breaker street main beach
-```
-
 Data Set based on Australia - G-NAF - Geoscape Geocoded National Address File (G-NAF)
 - https://data.gov.au/dataset/ds-dga-19432f89-dc3a-4ef3-b943-5326ef1dbecc/details?q=
 
@@ -36,8 +27,10 @@ Data Set based on Australia - G-NAF - Geoscape Geocoded National Address File (G
 ## Different search data
 
 Two search example pages showcasing different search apis for realtime completion searching as you enter text:
-- `oneaddress` is a single address table and field, using elastic match() and completer suggestion based search 
-- `address` is a a single address table with multiple address data fields as provided in the gnaf dump
+- `oneaddress` is a single address table and single address field. Using elastic match() and completer suggestion based search. 
+- `addresses` is a single address table with multiple address data fields as provided in the gnaf data dump.
+
+We use graphql to prevent over fetching of result data.
 
 ![dropdown-search.png](images/dropdown-search.png)
 
