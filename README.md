@@ -33,6 +33,14 @@ Data Set based on Australia - G-NAF - Geoscape Geocoded National Address File (G
 
 `import.sql` - has 2500 records of test data.
 
+## Different search data
+
+Two search example pages showcasing different search apis for realtime completion searching as you enter text:
+- `oneaddress` is a single address table and field, using elastic match() and completer suggestion based search 
+- `address` is a a single address table with multiple address data fields as provided in the gnaf dump
+
+![dropdown-search.png](images/dropdown-search.png)
+
 ## Test data
 
 Bump up indexer for larger batches
@@ -57,3 +65,13 @@ quarkus.hibernate-search-orm.schema-management.strategy=none
 ```
 
 ![grapql-index.png](images/graphql-index.png)
+
+## Clone the Index
+
+API's added for demoing the cloning of an index created by hibernate, and switching read/write alias to the new index.
+
+Here we clone `oneaddress-000002` to `oneaddress-000003`
+![index-clone.png](images/index-clone.png)
+
+Using the API's. `swtich`changes the read and write alias so search application can work on new index.
+![index-apis.png](images/index-apis.png)
