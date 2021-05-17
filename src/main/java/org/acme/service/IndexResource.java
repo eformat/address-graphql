@@ -18,6 +18,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.ReindexRequest;
+import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,7 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +39,9 @@ import java.util.regex.Pattern;
 public class IndexResource {
 
     private final Logger log = LoggerFactory.getLogger(IndexResource.class);
+
+    @Inject
+    SearchSession searchSession;
 
     @Inject
     RestHighLevelClient restHighLevelClient;
@@ -176,6 +181,17 @@ public class IndexResource {
         reindexRequest.setDestIndex(targetIndex);
         reindexRequest.setScroll(TimeValue.timeValueMinutes(5));
         restHighLevelClient.reindexAsync(reindexRequest, RequestOptions.DEFAULT, reindexListener);
+        return Response.ok().build();
+    }
+
+
+    @GET
+    @Path("/massIndex/{numDocs}")
+    @Operation(operationId = "massIndex", summary = "mass index documents", description = "This operation starts the mass indexer", deprecated = false, hidden = false)
+    public Response massIndex(@PathParam("numDocs") @DefaultValue("20000") Integer numDocs) throws InterruptedException {
+        searchSession.massIndexer()
+                .batchSizeToLoadObjects(numDocs)
+                .startAndWait();
         return Response.ok().build();
     }
 

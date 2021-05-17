@@ -40,12 +40,15 @@ public class AddressResource {
     @ConfigProperty(name = "quarkus.hibernate-search-orm.schema-management.strategy")
     String indexLoadStrategy;
 
+    @ConfigProperty(name = "index.onstart")
+    String indexOnStart;
+
     @Transactional
     void onStart(@Observes StartupEvent ev) throws InterruptedException {
-        // only reindex if we imported some content
-        if (Address.count() > 0 && !indexLoadStrategy.equals("none")) {
+        // only reindex if we imported some content and we set index.onstart to true
+        if (Address.count() > 0 && !indexLoadStrategy.equals("none") && indexOnStart.equalsIgnoreCase("true")) {
             searchSession.massIndexer()
-                    .batchSizeToLoadObjects(100000)
+                    .batchSizeToLoadObjects(20000)
                     .startAndWait();
         }
     }
@@ -58,7 +61,7 @@ public class AddressResource {
     @Query
     @Description("Search oneaddress by search term")
     public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        String finalSearch = search.trim().toLowerCase();
+        String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
         log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
 
         ElasticsearchSearchResult<JsonObject> result = searchSession.search(OneAddress.class)
