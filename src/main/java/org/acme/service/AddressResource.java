@@ -12,11 +12,6 @@ import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 import org.eclipse.microprofile.graphql.Query;
-import org.elasticsearch.action.ActionListener;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.ResizeRequest;
-import org.elasticsearch.client.indices.ResizeResponse;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
 import org.hibernate.search.backend.elasticsearch.search.query.ElasticsearchSearchResult;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -27,8 +22,6 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import javax.ws.rs.*;
-import javax.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -70,9 +63,11 @@ public class AddressResource {
 
         ElasticsearchSearchResult<JsonObject> result = searchSession.search(OneAddress.class)
                 .extension(ElasticsearchExtension.get())
-                .select( f -> f.source() )
-                .where(f -> f.match()
-                        .field( "address")
+                .select(f -> f.source())
+                .where((search == null || search.isEmpty()) ?
+                        f -> f.matchAll()
+                        : f -> f.match()
+                        .field("address")
                         .matching(finalSearch)
                 )
                 .requestTransformer(context -> {
