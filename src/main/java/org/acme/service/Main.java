@@ -35,7 +35,7 @@ public class Main {
                 .patterns(Arrays.asList("oneaddress-*", "address-*"))
                 .settings(Settings.builder().put("index.max_ngram_diff", 50));
         Pattern hostport = Pattern.compile("^(.*):(\\d+)$");
-        String elasticCluster = System.getProperty("quarkus.hibernate-search-orm.elasticsearch.hosts");
+        String elasticCluster = System.getProperty("quarkus.elasticsearch.hosts");
         if (elasticCluster == null || elasticCluster.isEmpty()) {
             elasticCluster = "localhost:9200";
         }
@@ -46,9 +46,9 @@ public class Main {
             host = matchAddress.group(1);
             port = Integer.parseInt(matchAddress.group(2));
         }
-        String elasticClusterUsername = System.getProperty("quarkus.hibernate-search-orm.elasticsearch.username");
-        String elasticClusterPassword = System.getProperty("quarkus.hibernate-search-orm.elasticsearch.password");
-        String elasticScheme = System.getProperty("quarkus.hibernate-search-orm.elasticsearch.protocol");
+        String elasticClusterUsername = System.getProperty("quarkus.elasticsearch.username");
+        String elasticClusterPassword = System.getProperty("quarkus.elasticsearch.password");
+        String elasticScheme = System.getProperty("quarkus.elasticsearch.protocol");
         RestClientBuilder builder;
         if (elasticScheme != null && !elasticScheme.isEmpty()) {
             builder = RestClient.builder(new HttpHost(host, port, elasticScheme));

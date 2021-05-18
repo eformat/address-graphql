@@ -29,7 +29,6 @@ import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -44,9 +43,9 @@ public class IndexResource {
     SearchSession searchSession;
 
     @Inject
-    RestHighLevelClient restHighLevelClient;
+    RestHighLevelClient restHighLevelClient; // FIXME need to figure out how to attach ssl
 
-    ActionListener<BulkByScrollResponse> reindexListener = new ActionListener<BulkByScrollResponse>() {
+     ActionListener<BulkByScrollResponse> reindexListener = new ActionListener<BulkByScrollResponse>() {
         @Override
         public void onResponse(BulkByScrollResponse bulkByScrollResponse) {
             log.info(">>> clone reindex acknowledged " + bulkByScrollResponse.getStatus());
@@ -62,7 +61,7 @@ public class IndexResource {
     @Path("/switch/{sourceIndex}/{targetIndex}")
     @Operation(operationId = "switch", summary = "switch index alias", description = "This operation switches the read and write alias", deprecated = false, hidden = false)
     public Response switchIndex(@PathParam("sourceIndex") String sourceIndex, @PathParam("targetIndex") String targetIndex) {
-        if(sourceIndex.isBlank() || targetIndex.isBlank())
+        if (sourceIndex.isBlank() || targetIndex.isBlank())
             return Response.notModified().build();
         log.info(">>> switching read and write alias for " + sourceIndex + " --> " + targetIndex);
         Pattern index = Pattern.compile("^(\\w+)-(\\d+)$");
@@ -113,7 +112,7 @@ public class IndexResource {
     @Path("/clone/{sourceIndex}/{targetIndex}")
     @Operation(operationId = "clone", summary = "clone an index", description = "This operation uses reindex to clone an elastic index asynchronously", deprecated = false, hidden = false)
     public Response cloneIndex(@PathParam("sourceIndex") String sourceIndex, @PathParam("targetIndex") String targetIndex) {
-        if(sourceIndex.isBlank() || targetIndex.isBlank())
+        if (sourceIndex.isBlank() || targetIndex.isBlank())
             return Response.notModified().build();
         log.info(">>> cloning " + sourceIndex + " --> " + targetIndex);
         // drop if it already exists
@@ -148,9 +147,9 @@ public class IndexResource {
         Settings indexSettings = getSettingsResponse.getIndexToSettings().get(sourceIndex);
         Settings analysisSettings = indexSettings.getAsSettings("index.analysis");
         Map<String, Object> allSettings = new HashMap<>();
-        for(String key : analysisSettings.keySet()) {
+        for (String key : analysisSettings.keySet()) {
             String value = analysisSettings.get(key);
-            value = value.replaceAll("\\[", "").replaceAll("\\]",""); // sob, but yes this is needed
+            value = value.replaceAll("\\[", "").replaceAll("\\]", ""); // sob, but yes this is needed
             allSettings.put("index.analysis." + key, value);
         }
         // FIXME - other setting we should parameterize
@@ -158,7 +157,7 @@ public class IndexResource {
         allSettings.put("index.number_of_replicas", 1);
 
         log.debug("***************All Settings*********************");
-        for(String key : allSettings.keySet()){
+        for (String key : allSettings.keySet()) {
             log.debug(key + " : " + allSettings.get(key));
         }
 
@@ -194,5 +193,4 @@ public class IndexResource {
                 .startAndWait();
         return Response.ok().build();
     }
-
 }
