@@ -31,18 +31,17 @@ import java.util.regex.Pattern;
 public class Main {
 
     public static void main(String... args) {
-        // register custom index template configuration for indexing large ngrams
-        PutIndexTemplateRequest ngramTemplate = new PutIndexTemplateRequest("ngram-template")
-                .patterns(Arrays.asList("oneaddress-*", "address-*"))
-                .settings(Settings.builder().put("index.max_ngram_diff", 50));
-        // replicas template
+        // index template configuration
         String indexReplicas = System.getProperty("index.number_of_replicas");
         if (indexReplicas == null || indexReplicas.isEmpty()) {
             indexReplicas = "1";
         }
-        PutIndexTemplateRequest replicasTemplate = new PutIndexTemplateRequest("replicas-template")
-                .patterns(Arrays.asList("oneaddress-*"))
-                .settings(Settings.builder().put("index.number_of_replicas", Integer.parseInt(indexReplicas)));
+        PutIndexTemplateRequest addressTemplate = new PutIndexTemplateRequest("address-template")
+                .patterns(Arrays.asList("oneaddress-*", "address-*"))
+                .settings(Settings.builder()
+                        .put("index.max_ngram_diff", 50)
+                        .put("index.number_of_replicas", Integer.parseInt(indexReplicas))
+                );
         Pattern hostport = Pattern.compile("^(.*):(\\d+)$");
         String elasticCluster = System.getProperty("quarkus.elasticsearch.hosts");
         if (elasticCluster == null || elasticCluster.isEmpty()) {
@@ -98,9 +97,7 @@ public class Main {
         }
         RestHighLevelClient restHighLevelClient = new RestHighLevelClient(builder);
         try {
-            AcknowledgedResponse acknowledgedResponse = restHighLevelClient.indices().putTemplate(ngramTemplate, RequestOptions.DEFAULT);
-            assert acknowledgedResponse.isAcknowledged();
-            acknowledgedResponse = restHighLevelClient.indices().putTemplate(replicasTemplate, RequestOptions.DEFAULT);
+            AcknowledgedResponse acknowledgedResponse = restHighLevelClient.indices().putTemplate(addressTemplate, RequestOptions.DEFAULT);
             assert acknowledgedResponse.isAcknowledged();
         } catch (IOException theE) {
             theE.printStackTrace();
