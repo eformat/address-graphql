@@ -43,7 +43,8 @@ public class IndexResource {
     SearchSession searchSession;
 
     @Inject
-    RestHighLevelClient restHighLevelClient; // FIXME need to figure out how to attach ssl
+    RestHighLevelClient restHighLevelClient;
+    // FIXME need to figure out how to attach ssl, https://quarkus.io/guides/elasticsearch#programmatically-configuring-elasticsearch
 
      ActionListener<BulkByScrollResponse> reindexListener = new ActionListener<BulkByScrollResponse>() {
         @Override

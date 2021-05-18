@@ -22,9 +22,7 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -95,17 +93,20 @@ public class AddressResource {
                 .getAsJsonArray("address").get(0).getAsJsonObject()
                 .getAsJsonArray("options");
 
-        List<OneAddress> list = new ArrayList<>();
+        HashSet<OneAddress> uniqueList = new HashSet<>();
         for (JsonElement element : matches) {
             OneAddress address = new OneAddress();
             address.setAddress(element.getAsJsonObject().get("_source").getAsJsonObject().get("address").getAsString());
-            list.add(address);
+            uniqueList.add(address);
         }
         for (JsonElement element : suggestions) {
             OneAddress address = new OneAddress();
             address.setAddress(element.getAsJsonObject().get("text").getAsString());
-            list.add(address);
+            uniqueList.add(address);
         }
+        List<OneAddress> list = new ArrayList<>(uniqueList);
+        // FIXME can we ue hibernate sort here?
+        Collections.sort(list);
         return list;
     }
 

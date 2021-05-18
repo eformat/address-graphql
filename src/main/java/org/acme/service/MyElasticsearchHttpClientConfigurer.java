@@ -9,6 +9,7 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 
 // FIXME not working, disabled https in ES for now
+// FIXME need to figure out how to attach ssl, https://quarkus.io/guides/elasticsearch#programmatically-configuring-elasticsearch
 public class MyElasticsearchHttpClientConfigurer implements ElasticsearchHttpClientConfigurer {
 
     @Override
