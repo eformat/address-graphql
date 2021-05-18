@@ -3,6 +3,7 @@ package org.acme.service;
 import io.quarkus.runtime.Quarkus;
 import io.quarkus.runtime.QuarkusApplication;
 import io.quarkus.runtime.annotations.QuarkusMain;
+import io.smallrye.graphql.api.Scalar;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -34,6 +35,14 @@ public class Main {
         PutIndexTemplateRequest ngramTemplate = new PutIndexTemplateRequest("ngram-template")
                 .patterns(Arrays.asList("oneaddress-*", "address-*"))
                 .settings(Settings.builder().put("index.max_ngram_diff", 50));
+        // replicas template
+        String indexReplicas = System.getProperty("index.number_of_replicas");
+        if (indexReplicas == null || indexReplicas.isEmpty()) {
+            indexReplicas = "1";
+        }
+        PutIndexTemplateRequest replicasTemplate = new PutIndexTemplateRequest("replicas-template")
+                .patterns(Arrays.asList("oneaddress-*"))
+                .settings(Settings.builder().put("index.number_of_replicas", Integer.parseInt(indexReplicas)));
         Pattern hostport = Pattern.compile("^(.*):(\\d+)$");
         String elasticCluster = System.getProperty("quarkus.elasticsearch.hosts");
         if (elasticCluster == null || elasticCluster.isEmpty()) {
@@ -67,7 +76,7 @@ public class Main {
             SSLContext sslContext;
             try {
                 sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, new TrustManager[]{ TrustAllX509ExtendedTrustManager.getInstance() }, null);
+                sslContext.init(null, new TrustManager[]{TrustAllX509ExtendedTrustManager.getInstance()}, null);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
                 throw new RuntimeException();
@@ -90,6 +99,8 @@ public class Main {
         RestHighLevelClient restHighLevelClient = new RestHighLevelClient(builder);
         try {
             AcknowledgedResponse acknowledgedResponse = restHighLevelClient.indices().putTemplate(ngramTemplate, RequestOptions.DEFAULT);
+            assert acknowledgedResponse.isAcknowledged();
+            acknowledgedResponse = restHighLevelClient.indices().putTemplate(replicasTemplate, RequestOptions.DEFAULT);
             assert acknowledgedResponse.isAcknowledged();
         } catch (IOException theE) {
             theE.printStackTrace();
