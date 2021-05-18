@@ -153,9 +153,9 @@ public class IndexResource {
             value = value.replaceAll("\\[", "").replaceAll("\\]", ""); // sob, but yes this is needed
             allSettings.put("index.analysis." + key, value);
         }
-        // FIXME - other setting we should parameterize
-        allSettings.put("index.number_of_shards", 1);
-        allSettings.put("index.number_of_replicas", 1);
+        // other setting we can parameterize/temlplatize
+        //allSettings.put("index.number_of_shards", 1);
+        //allSettings.put("index.number_of_replicas", 1);
 
         log.debug("***************All Settings*********************");
         for (String key : allSettings.keySet()) {
