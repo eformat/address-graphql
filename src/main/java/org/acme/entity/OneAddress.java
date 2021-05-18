@@ -7,6 +7,8 @@ import org.hibernate.search.mapper.pojo.mapping.definition.annotation.Indexed;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.NonStandardField;
 
 import javax.persistence.Entity;
+import javax.persistence.Transient;
+import java.math.BigDecimal;
 import java.util.Objects;
 
 @Entity
@@ -17,8 +19,15 @@ public class OneAddress extends PanacheEntity implements Comparable {
     @NonStandardField(name = "address_suggest", valueBinder = @ValueBinderRef(type = CompletionBinder.class))
     public String address;
 
+    @Transient
+    public BigDecimal score;
+
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public void setScore(BigDecimal score) {
+        this.score = score;
     }
 
     @Override
@@ -39,6 +48,6 @@ public class OneAddress extends PanacheEntity implements Comparable {
             return 1;
         }
         OneAddress other = (OneAddress) o;
-        return this.address.compareTo(other.address);
+        return this.score.compareTo(other.score);
     }
 }

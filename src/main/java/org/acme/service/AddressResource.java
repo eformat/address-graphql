@@ -82,6 +82,7 @@ public class AddressResource {
                         }));
                     }));
                 })
+                .sort(f -> f.score())
                 .fetch(size.orElse(20));
 
         JsonArray matches = result.responseBody()
@@ -97,15 +98,17 @@ public class AddressResource {
         for (JsonElement element : matches) {
             OneAddress address = new OneAddress();
             address.setAddress(element.getAsJsonObject().get("_source").getAsJsonObject().get("address").getAsString());
+            address.setScore(element.getAsJsonObject().get("_score").getAsBigDecimal());
             uniqueList.add(address);
         }
         for (JsonElement element : suggestions) {
             OneAddress address = new OneAddress();
             address.setAddress(element.getAsJsonObject().get("text").getAsString());
+            address.setScore(element.getAsJsonObject().get("_score").getAsBigDecimal());
             uniqueList.add(address);
         }
         List<OneAddress> list = new ArrayList<>(uniqueList);
-        // FIXME can we ue hibernate sort here?
+        // FIXME can we ue hibernate sort here instead of comparitor
         Collections.sort(list);
         return list;
     }
