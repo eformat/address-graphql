@@ -1,13 +1,21 @@
 package org.acme.service;
 
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import org.acme.entity.OneAddressCopy;
+import org.apache.http.util.EntityUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
 import org.elasticsearch.action.admin.indices.settings.get.GetSettingsResponse;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.action.support.master.AcknowledgedResponse;
+import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.CreateIndexResponse;
@@ -16,8 +24,12 @@ import org.elasticsearch.client.indices.GetMappingsResponse;
 import org.elasticsearch.cluster.metadata.MappingMetadata;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.reindex.BulkByScrollResponse;
 import org.elasticsearch.index.reindex.ReindexRequest;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.hibernate.search.mapper.orm.session.SearchSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +39,9 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +60,10 @@ public class IndexResource {
     RestHighLevelClient restHighLevelClient;
     // FIXME need to figure out how to attach ssl, https://quarkus.io/guides/elasticsearch#programmatically-configuring-elasticsearch
 
-     ActionListener<BulkByScrollResponse> reindexListener = new ActionListener<BulkByScrollResponse>() {
+    @Inject
+    RestClient restClient;
+
+    ActionListener<BulkByScrollResponse> reindexListener = new ActionListener<BulkByScrollResponse>() {
         @Override
         public void onResponse(BulkByScrollResponse bulkByScrollResponse) {
             log.info(">>> clone reindex acknowledged " + bulkByScrollResponse.getStatus());
@@ -194,4 +211,52 @@ public class IndexResource {
                 .startAndWait();
         return Response.ok().build();
     }
+
+
+    @GET
+    @Path("/testLow")
+    public List<OneAddressCopy> testLow() throws IOException {
+        Request request = new Request(
+                "POST",
+                "/oneaddress-read/_search");
+        //construct a JSON query like {"query": {"match": {"<term>": "<match"}}
+        JsonObject termJson = new JsonObject().put("query", "23 crank street");
+        JsonObject addressJson = new JsonObject().put("address", termJson);
+        JsonObject matchJson = new JsonObject().put("match", addressJson);
+        JsonObject queryJson = new JsonObject().put("query", matchJson);
+        request.setJsonEntity(queryJson.encode());
+        org.elasticsearch.client.Response response = restClient.performRequest(request);
+        String responseBody = EntityUtils.toString(response.getEntity());
+        JsonObject json = new JsonObject(responseBody);
+        JsonArray hits = json.getJsonObject("hits").getJsonArray("hits");
+        List<OneAddressCopy> results = new ArrayList<>(hits.size());
+        for (int i = 0; i < hits.size(); i++) {
+            JsonObject hit = hits.getJsonObject(i);
+            OneAddressCopy fruit = hit.getJsonObject("_source").mapTo(OneAddressCopy.class);
+            results.add(fruit);
+        }
+        return results;
+    }
+
+    @GET
+    @Path("/testHigh")
+    public List<OneAddressCopy> testHigh() throws IOException {
+        SearchRequest searchRequest = new SearchRequest("oneaddress-read");
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        JsonObject termJson = new JsonObject().put("query", "23 crank street");
+        JsonObject addressJson = new JsonObject().put("address", termJson);
+        JsonObject matchJson = new JsonObject().put("match", addressJson);
+        searchSourceBuilder.query(QueryBuilders.wrapperQuery(matchJson.encode()));
+        searchRequest.source(searchSourceBuilder);
+        SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        SearchHits hits = searchResponse.getHits();
+        List<OneAddressCopy> results = new ArrayList<>(hits.getHits().length);
+        for (SearchHit hit : hits.getHits()) {
+            String sourceAsString = hit.getSourceAsString();
+            JsonObject json = new JsonObject(sourceAsString);
+            results.add(json.mapTo(OneAddressCopy.class));
+        }
+        return results;
+    }
+
 }
