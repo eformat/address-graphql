@@ -6,7 +6,7 @@ IMG := $(REPOSITORY):latest
 
 # clean compile
 compile:
-	mvn clean package -DskipTests
+	mvn clean package -DskipTests # -Dquarkus.package.type=legacy-jar #  -Pnative -Dquarkus.native.container-build=true -Dquarkus.native.container-runtime=podman -Dquarkus.profile=prod -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel:20.3-java11
 
 # Podman Login
 podman-login:

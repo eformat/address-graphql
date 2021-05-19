@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.quarkus.runtime.StartupEvent;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.acme.entity.Address;
 import org.acme.entity.OneAddress;
 import org.acme.entity.StreetType;
@@ -21,8 +23,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
+import javax.swing.text.html.Option;
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,40 +55,34 @@ public class AddressResource {
         }
     }
 
-    /*
-      Search using elastic completion suggester.
-      We want ONE call to ES here to keep things fast.
-      This requires the data is engineered into a single oneaddress.address text field first.
-     */
-    @Query
-    @Description("Search oneaddress by search term")
-    public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
-        log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
-
-        ElasticsearchSearchResult<JsonObject> result = searchSession.search(OneAddress.class)
-                .extension(ElasticsearchExtension.get())
-                .select(f -> f.source())
-                .where((search == null || search.isEmpty()) ?
-                        f -> f.matchAll()
-                        : f -> f.match()
-                        .field("address")
-                        .matching(finalSearch)
-                )
-                .requestTransformer(context -> {
-                    JsonObject body = context.body();
-                    body.add("suggest", jsonObject(suggest -> {
-                        suggest.add("address", jsonObject(mySuggest -> {
-                            mySuggest.addProperty("prefix", finalSearch);
-                            mySuggest.add("completion", jsonObject(term -> {
-                                term.addProperty("field", "address_suggest");
+    private ElasticsearchSearchResult<JsonObject> _search(String finalSearch, Optional<Integer> size) {
+        return Uni.createFrom().item(
+                searchSession.search(OneAddress.class)
+                        .extension(ElasticsearchExtension.get())
+                        .select(f -> f.source())
+                        .where((finalSearch == null || finalSearch.isEmpty()) ?
+                                f -> f.matchAll()
+                                : f -> f.match()
+                                .field("address")
+                                .matching(finalSearch)
+                        )
+                        .requestTransformer(context -> {
+                            JsonObject body = context.body();
+                            body.add("suggest", jsonObject(suggest -> {
+                                suggest.add("address", jsonObject(mySuggest -> {
+                                    mySuggest.addProperty("prefix", finalSearch);
+                                    mySuggest.add("completion", jsonObject(term -> {
+                                        term.addProperty("field", "address_suggest");
+                                    }));
+                                }));
                             }));
-                        }));
-                    }));
-                })
-                .sort(f -> f.score())
-                .fetch(size.orElse(20));
+                        })
+                        .sort(f -> f.score())
+                        .fetch(size.orElse(20))
+        ).runSubscriptionOn(Infrastructure.getDefaultWorkerPool()).await().indefinitely();
+    }
 
+    private List<OneAddress> _processSearch(ElasticsearchSearchResult<JsonObject> result) {
         JsonArray matches = result.responseBody()
                 .getAsJsonObject("hits")
                 .getAsJsonArray("hits");
@@ -110,7 +108,23 @@ public class AddressResource {
         List<OneAddress> list = new ArrayList<>(uniqueList);
         // FIXME can we ue hibernate sort here instead of comparitor
         Collections.sort(list);
+        log.info(">>> returning list " + list.size());
         return list;
+    }
+
+    /*
+      Search using elastic completion suggester.
+      We want ONE call to ES here to keep things fast.
+      This requires the data is engineered into a single oneaddress.address text field first.
+     */
+    @Query
+    @Description("Search oneaddress by search term")
+    public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
+        String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
+        log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
+        ElasticsearchSearchResult<JsonObject> result = _search(finalSearch, size);
+        log.info(">>> search returned");
+        return _processSearch(result);
     }
 
     /*

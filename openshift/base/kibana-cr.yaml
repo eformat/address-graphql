@@ -8,7 +8,7 @@ spec:
   count: 1
   elasticsearchRef:
     name: address
-  version: 7.12.0
+  version: 7.12.1
   podTemplate:
     metadata:
       labels:

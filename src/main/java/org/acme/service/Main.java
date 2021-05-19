@@ -36,11 +36,16 @@ public class Main {
         if (indexReplicas == null || indexReplicas.isEmpty()) {
             indexReplicas = "1";
         }
+        String indexShards = System.getProperty("index.number_of_shards");
+        if (indexShards == null || indexShards.isEmpty()) {
+            indexShards = "1";
+        }
         PutIndexTemplateRequest addressTemplate = new PutIndexTemplateRequest("address-template")
                 .patterns(Arrays.asList("oneaddress-*", "address-*"))
                 .settings(Settings.builder()
                         .put("index.max_ngram_diff", 50)
                         .put("index.number_of_replicas", Integer.parseInt(indexReplicas))
+                        .put("index.number_of_shards", Integer.parseInt(indexShards))
                 );
         Pattern hostport = Pattern.compile("^(.*):(\\d+)$");
         String elasticCluster = System.getProperty("quarkus.elasticsearch.hosts");
