@@ -214,13 +214,13 @@ public class IndexResource {
 
 
     @GET
-    @Path("/testLow")
-    public List<OneAddressCopy> testLow() throws IOException {
+    @Path("/testLow/{search}")
+    public List<OneAddressCopy> testLow(@PathParam("search") String search) throws IOException {
         Request request = new Request(
                 "POST",
                 "/oneaddress-read/_search");
         //construct a JSON query like {"query": {"match": {"<term>": "<match"}}
-        JsonObject termJson = new JsonObject().put("query", "23 crank street");
+        JsonObject termJson = new JsonObject().put("query", search.toLowerCase());
         JsonObject addressJson = new JsonObject().put("address", termJson);
         JsonObject matchJson = new JsonObject().put("match", addressJson);
         JsonObject queryJson = new JsonObject().put("query", matchJson);
@@ -239,11 +239,11 @@ public class IndexResource {
     }
 
     @GET
-    @Path("/testHigh")
-    public List<OneAddressCopy> testHigh() throws IOException {
+    @Path("/testHigh/{search}")
+    public List<OneAddressCopy> testHigh(@PathParam("search") String search) throws IOException {
         SearchRequest searchRequest = new SearchRequest("oneaddress-read");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        JsonObject termJson = new JsonObject().put("query", "23 crank street");
+        JsonObject termJson = new JsonObject().put("query", search.toLowerCase());
         JsonObject addressJson = new JsonObject().put("address", termJson);
         JsonObject matchJson = new JsonObject().put("match", addressJson);
         searchSourceBuilder.query(QueryBuilders.wrapperQuery(matchJson.encode()));
