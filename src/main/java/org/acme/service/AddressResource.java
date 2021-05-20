@@ -14,6 +14,14 @@ import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 import org.eclipse.microprofile.graphql.Query;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
 import org.hibernate.search.backend.elasticsearch.search.query.ElasticsearchSearchResult;
 import org.hibernate.search.engine.search.common.BooleanOperator;
@@ -24,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
+import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -36,6 +46,9 @@ public class AddressResource {
 
     @Inject
     SearchSession searchSession;
+
+    @Inject
+    RestHighLevelClient restHighLevelClient;
 
     @ConfigProperty(name = "quarkus.hibernate-search-orm.schema-management.strategy")
     String indexLoadStrategy;
@@ -53,6 +66,9 @@ public class AddressResource {
         }
     }
 
+    /*
+      BEWARE - This is useful code and works OK, but under concurrent load performs a lot worse than directly using High Level Rest Client
+     */
     private ElasticsearchSearchResult<JsonObject> _search(String finalSearch, Optional<Integer> size) {
         return Uni.createFrom().item(
                 searchSession.search(OneAddress.class)
@@ -104,10 +120,60 @@ public class AddressResource {
             uniqueList.add(address);
         }
         List<OneAddress> list = new ArrayList<>(uniqueList);
-        // FIXME can we ue hibernate sort here instead of comparitor
         Collections.sort(list);
         log.info(">>> returning list " + list.size());
         return list;
+    }
+
+    private List<OneAddress> _fetchHighLevelClient(String search) {
+        SearchRequest searchRequest = new SearchRequest("oneaddress-read");
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        String queryJson;
+        if (search == null || search.isEmpty()) {
+            io.vertx.core.json.JsonObject matchAll = new io.vertx.core.json.JsonObject().put("match_all", new io.vertx.core.json.JsonObject());
+            queryJson = matchAll.encode();
+        } else {
+            //construct a JSON query {"match":{"address":{"query":"23 crank street"}}},"sort":["_score"],"_source":["*"],"suggest":{"address":{"prefix":"23 crank street","completion":{"field":"address_suggest"}}}
+            io.vertx.core.json.JsonObject termJson = new io.vertx.core.json.JsonObject().put("query", search.toLowerCase());
+            io.vertx.core.json.JsonObject addressJson = new io.vertx.core.json.JsonObject().put("address", termJson);
+            io.vertx.core.json.JsonObject matchJson = new io.vertx.core.json.JsonObject().put("match", addressJson);
+            io.vertx.core.json.JsonObject fieldJson = new io.vertx.core.json.JsonObject().put("field", "address_suggest");
+            io.vertx.core.json.JsonObject completionJson = new io.vertx.core.json.JsonObject().put("completion", fieldJson);
+            io.vertx.core.json.JsonObject prefixJson = new io.vertx.core.json.JsonObject().put("prefix", search.toLowerCase()).mergeIn(completionJson);
+            io.vertx.core.json.JsonObject suggestAddressJson = new io.vertx.core.json.JsonObject().put("address", prefixJson);
+            io.vertx.core.json.JsonObject suggestJson = new io.vertx.core.json.JsonObject().put("suggest", suggestAddressJson);
+            io.vertx.core.json.JsonObject sortJson = new io.vertx.core.json.JsonObject().put("sort", new io.vertx.core.json.JsonArray().add("_score"));
+            io.vertx.core.json.JsonObject sourceJson = new io.vertx.core.json.JsonObject().put("_source", new io.vertx.core.json.JsonArray().add("*"));
+            queryJson = String.join(",",
+                    matchJson.encode(),
+                    sortJson.encode(),
+                    sourceJson.encode(),
+                    suggestJson.encode());
+        }
+        log.info(">>> JSON " + queryJson);
+        searchSourceBuilder.query(QueryBuilders.wrapperQuery(queryJson));
+        searchRequest.source(searchSourceBuilder);
+        SearchResponse searchResponse = null;
+        try {
+            searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+        SearchHits hits = searchResponse.getHits();
+        List<OneAddress> results = new ArrayList<>(hits.getHits().length);
+        for (SearchHit hit : hits.getHits()) {
+            String sourceAsString = hit.getSourceAsString();
+            float score = hit.getScore();
+            io.vertx.core.json.JsonObject json = new io.vertx.core.json.JsonObject(sourceAsString);
+            OneAddress address = json.mapTo(OneAddress.class);
+            address.setScore(BigDecimal.valueOf(score));
+            results.add(address);
+        }
+        // FIXME - resort based on _score, annoying since its sorted from ES
+        results.sort(Comparator.reverseOrder());
+        log.info(">>> search returned");
+        return results;
     }
 
     /*
@@ -120,9 +186,12 @@ public class AddressResource {
     public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
         String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
         log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
-        ElasticsearchSearchResult<JsonObject> result = _search(finalSearch, size);
-        log.info(">>> search returned");
-        return _processSearch(result);
+        return _fetchHighLevelClient(search);
+
+        // Does not perform as well
+        //ElasticsearchSearchResult<JsonObject> result = _search(finalSearch, size);
+        //log.info(">>> search returned");
+        //return _processSearch(result);
     }
 
     /*

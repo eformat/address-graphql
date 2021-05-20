@@ -1,5 +1,6 @@
 package org.acme.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
 import org.hibernate.search.mapper.pojo.bridge.mapping.annotation.ValueBinderRef;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
@@ -13,6 +14,7 @@ import java.util.Objects;
 
 @Entity
 @Indexed
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OneAddress extends PanacheEntity implements Comparable {
 
     @FullTextField(analyzer = "address")

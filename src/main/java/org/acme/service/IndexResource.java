@@ -2,7 +2,7 @@ package org.acme.service;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import org.acme.entity.OneAddressCopy;
+import org.acme.entity.OneAddress;
 import org.apache.http.util.EntityUtils;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.elasticsearch.action.ActionListener;
@@ -215,7 +215,7 @@ public class IndexResource {
 
     @GET
     @Path("/testLow/{search}")
-    public List<OneAddressCopy> testLow(@PathParam("search") String search) throws IOException {
+    public List<OneAddress> testLow(@PathParam("search") String search) throws IOException {
         Request request = new Request(
                 "POST",
                 "/oneaddress-read/_search");
@@ -237,18 +237,18 @@ public class IndexResource {
         String responseBody = EntityUtils.toString(response.getEntity());
         JsonObject json = new JsonObject(responseBody);
         JsonArray hits = json.getJsonObject("hits").getJsonArray("hits");
-        List<OneAddressCopy> results = new ArrayList<>(hits.size());
+        List<OneAddress> results = new ArrayList<>(hits.size());
         for (int i = 0; i < hits.size(); i++) {
             JsonObject hit = hits.getJsonObject(i);
-            OneAddressCopy fruit = hit.getJsonObject("_source").mapTo(OneAddressCopy.class);
-            results.add(fruit);
+            OneAddress address = hit.getJsonObject("_source").mapTo(OneAddress.class);
+            results.add(address);
         }
         return results;
     }
 
     @GET
     @Path("/testHigh/{search}")
-    public List<OneAddressCopy> testHigh(@PathParam("search") String search) throws IOException {
+    public List<OneAddress> testHigh(@PathParam("search") String search) throws IOException {
         SearchRequest searchRequest = new SearchRequest("oneaddress-read");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         //construct a JSON query {"match":{"address":{"query":"23 crank street"}}},"sort":["_score"],"_source":["*"],"suggest":{"address":{"prefix":"23 crank street","completion":{"field":"address_suggest"}}}
@@ -272,11 +272,11 @@ public class IndexResource {
         searchRequest.source(searchSourceBuilder);
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
         SearchHits hits = searchResponse.getHits();
-        List<OneAddressCopy> results = new ArrayList<>(hits.getHits().length);
+        List<OneAddress> results = new ArrayList<>(hits.getHits().length);
         for (SearchHit hit : hits.getHits()) {
             String sourceAsString = hit.getSourceAsString();
             JsonObject json = new JsonObject(sourceAsString);
-            results.add(json.mapTo(OneAddressCopy.class));
+            results.add(json.mapTo(OneAddress.class));
         }
         return results;
     }
