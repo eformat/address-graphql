@@ -219,11 +219,19 @@ public class IndexResource {
         Request request = new Request(
                 "POST",
                 "/oneaddress-read/_search");
-        //construct a JSON query like {"query": {"match": {"<term>": "<match"}}
+        //construct a JSON query {"query":{"match":{"address":{"query":"23 crank street"}}},"sort":["_score"],"_source":["*"],"suggest":{"address":{"prefix":"23 crank street","completion":{"field":"address_suggest"}}}}
         JsonObject termJson = new JsonObject().put("query", search.toLowerCase());
         JsonObject addressJson = new JsonObject().put("address", termJson);
         JsonObject matchJson = new JsonObject().put("match", addressJson);
-        JsonObject queryJson = new JsonObject().put("query", matchJson);
+        JsonObject fieldJson = new JsonObject().put("field", "address_suggest");
+        JsonObject completionJson = new JsonObject().put("completion", fieldJson);
+        JsonObject prefixJson = new JsonObject().put("prefix", search.toLowerCase()).mergeIn(completionJson);
+        JsonObject suggestJson = new JsonObject().put("address", prefixJson);
+        JsonObject queryJson = new JsonObject()
+                .put("query", matchJson)
+                .put("sort", new JsonArray().add("_score"))
+                .put("_source", new JsonArray().add("*"))
+                .put("suggest", suggestJson);
         request.setJsonEntity(queryJson.encode());
         org.elasticsearch.client.Response response = restClient.performRequest(request);
         String responseBody = EntityUtils.toString(response.getEntity());
@@ -243,10 +251,24 @@ public class IndexResource {
     public List<OneAddressCopy> testHigh(@PathParam("search") String search) throws IOException {
         SearchRequest searchRequest = new SearchRequest("oneaddress-read");
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        //construct a JSON query {"match":{"address":{"query":"23 crank street"}}},"sort":["_score"],"_source":["*"],"suggest":{"address":{"prefix":"23 crank street","completion":{"field":"address_suggest"}}}
         JsonObject termJson = new JsonObject().put("query", search.toLowerCase());
         JsonObject addressJson = new JsonObject().put("address", termJson);
         JsonObject matchJson = new JsonObject().put("match", addressJson);
-        searchSourceBuilder.query(QueryBuilders.wrapperQuery(matchJson.encode()));
+        JsonObject fieldJson = new JsonObject().put("field", "address_suggest");
+        JsonObject completionJson = new JsonObject().put("completion", fieldJson);
+        JsonObject prefixJson = new JsonObject().put("prefix", search.toLowerCase()).mergeIn(completionJson);
+        JsonObject suggestAddressJson = new JsonObject().put("address", prefixJson);
+        JsonObject suggestJson = new JsonObject().put("suggest", suggestAddressJson);
+        JsonObject sortJson = new JsonObject().put("sort", new JsonArray().add("_score"));
+        JsonObject sourceJson = new JsonObject().put("_source", new JsonArray().add("*"));
+        String queryJson = String.join(",",
+                matchJson.encode(),
+                sortJson.encode(),
+                sourceJson.encode(),
+                suggestJson.encode());
+        log.info(">>> JSON " + queryJson);
+        searchSourceBuilder.query(QueryBuilders.wrapperQuery(queryJson));
         searchRequest.source(searchSourceBuilder);
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
         SearchHits hits = searchResponse.getHits();
