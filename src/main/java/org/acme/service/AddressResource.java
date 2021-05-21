@@ -76,8 +76,11 @@ public class AddressResource {
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         String queryJson;
         if (search == null || search.isEmpty()) {
-            io.vertx.core.json.JsonObject matchAll = new io.vertx.core.json.JsonObject().put("match_all", new io.vertx.core.json.JsonObject());
-            queryJson = matchAll.encode();
+            io.vertx.core.json.JsonObject matchAll = new io.vertx.core.json.JsonObject().put("match_all", new JsonObject());
+            io.vertx.core.json.JsonObject query = new io.vertx.core.json.JsonObject().put("query", matchAll);
+            _addJson(query, "suggest.address.prefix", "");
+            _addJson(query, "suggest.address.completion.field", "address_suggest");
+            queryJson = query.encode();
         } else {
             queryJson = _readFile("/query-suggest-match.json");
             io.vertx.core.json.JsonObject qJson = new io.vertx.core.json.JsonObject(queryJson);
