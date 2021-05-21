@@ -128,7 +128,7 @@ public class AddressResource {
             uniqueList.add(address);
         }
         List<OneAddress> list = new ArrayList<>(uniqueList);
-        Collections.sort(list);
+        list.sort(Collections.reverseOrder());
         return list;
     }
 
@@ -204,7 +204,7 @@ public class AddressResource {
             uniqueList.add(address);
         }
         List<OneAddress> list = new ArrayList<>(uniqueList);
-        Collections.sort(list);
+        list.sort(Collections.reverseOrder());
         return list;
     }
 
