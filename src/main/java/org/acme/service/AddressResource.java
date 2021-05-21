@@ -9,18 +9,15 @@ import io.smallrye.mutiny.infrastructure.Infrastructure;
 import org.acme.entity.Address;
 import org.acme.entity.OneAddress;
 import org.acme.entity.StreetType;
+import org.apache.http.util.EntityUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.graphql.Description;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 import org.eclipse.microprofile.graphql.Query;
 import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.client.Request;
+import org.elasticsearch.client.RestClient;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.hibernate.search.backend.elasticsearch.ElasticsearchExtension;
 import org.hibernate.search.backend.elasticsearch.search.query.ElasticsearchSearchResult;
@@ -32,12 +29,16 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.transaction.Transactional;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @GraphQLApi
 public class AddressResource {
@@ -48,7 +49,7 @@ public class AddressResource {
     SearchSession searchSession;
 
     @Inject
-    RestHighLevelClient restHighLevelClient;
+    RestClient restClient;
 
     @ConfigProperty(name = "quarkus.hibernate-search-orm.schema-management.strategy")
     String indexLoadStrategy;
@@ -64,6 +65,89 @@ public class AddressResource {
                     .batchSizeToLoadObjects(20000)
                     .startAndWait();
         }
+    }
+
+    /*
+      Optimized approach, uses elastic low level client
+      Load query from json file, same query we can use to the elastic rest end point
+     */
+    private List<OneAddress> _fetchLowLevelClient(String search, Integer size) {
+        SearchRequest searchRequest = new SearchRequest("oneaddress-read");
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        String queryJson;
+        if (search == null || search.isEmpty()) {
+            io.vertx.core.json.JsonObject matchAll = new io.vertx.core.json.JsonObject().put("match_all", new io.vertx.core.json.JsonObject());
+            queryJson = matchAll.encode();
+        } else {
+            queryJson = _readFile("/query-suggest-match.json");
+            io.vertx.core.json.JsonObject qJson = new io.vertx.core.json.JsonObject(queryJson);
+            _addJson(qJson, "size", size.toString());
+            _addJson(qJson, "query.match.address.query", search.toLowerCase());
+            _addJson(qJson, "suggest.address.prefix", search.toLowerCase());
+            queryJson = qJson.encode();
+        }
+        log.info(">>> JSON " + queryJson);
+        // make low level query request
+        Request request = new Request(
+                "POST",
+                "/oneaddress-read/_search");
+        request.setJsonEntity(queryJson);
+        io.vertx.core.json.JsonObject json = null;
+        try {
+            org.elasticsearch.client.Response response = restClient.performRequest(request);
+            String responseBody = EntityUtils.toString(response.getEntity());
+            json = new io.vertx.core.json.JsonObject(responseBody);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+        log.info(">>> search returned");
+        return _processSearch(json);
+    }
+
+    private List<OneAddress> _processSearch(io.vertx.core.json.JsonObject result) {
+        io.vertx.core.json.JsonArray matches = result.getJsonObject("hits").getJsonArray("hits");
+        io.vertx.core.json.JsonArray suggestions = result
+                .getJsonObject("suggest")
+                .getJsonArray("address").getJsonObject(0)
+                .getJsonArray("options");
+
+        HashSet<OneAddress> uniqueList = new HashSet<>();
+        for (int i = 0; i < matches.size(); i++) {
+            io.vertx.core.json.JsonObject hit = matches.getJsonObject(i);
+            OneAddress address = hit.getJsonObject("_source").mapTo(OneAddress.class);
+            float score = hit.getFloat("_score");
+            address.setScore(BigDecimal.valueOf(score));
+            uniqueList.add(address);
+        }
+        for (int i = 0; i < suggestions.size(); i++) {
+            io.vertx.core.json.JsonObject hit = suggestions.getJsonObject(i);
+            OneAddress address = hit.getJsonObject("_source").mapTo(OneAddress.class);
+            float score = hit.getFloat("_score");
+            address.setScore(BigDecimal.valueOf(score));
+            uniqueList.add(address);
+        }
+        List<OneAddress> list = new ArrayList<>(uniqueList);
+        Collections.sort(list);
+        return list;
+    }
+
+    /*
+      Search using elastic completion suggester.
+      We want ONE call to ES here to keep things fast.
+      This requires the data is engineered into a single oneaddress.address text field first.
+     */
+    @Query
+    @Description("Search oneaddress by search term")
+    public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
+        String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
+        log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
+        return _fetchLowLevelClient(search, size.orElse(15));
+
+        // Does not perform as well
+        //ElasticsearchSearchResult<JsonObject> result = _search(finalSearch, size);
+        //log.info(">>> search returned");
+        //return _processSearch(result);
     }
 
     /*
@@ -121,77 +205,7 @@ public class AddressResource {
         }
         List<OneAddress> list = new ArrayList<>(uniqueList);
         Collections.sort(list);
-        log.info(">>> returning list " + list.size());
         return list;
-    }
-
-    private List<OneAddress> _fetchHighLevelClient(String search) {
-        SearchRequest searchRequest = new SearchRequest("oneaddress-read");
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        String queryJson;
-        if (search == null || search.isEmpty()) {
-            io.vertx.core.json.JsonObject matchAll = new io.vertx.core.json.JsonObject().put("match_all", new io.vertx.core.json.JsonObject());
-            queryJson = matchAll.encode();
-        } else {
-            //construct a JSON query {"match":{"address":{"query":"23 crank street"}}},"sort":["_score"],"_source":["*"],"suggest":{"address":{"prefix":"23 crank street","completion":{"field":"address_suggest"}}}
-            io.vertx.core.json.JsonObject termJson = new io.vertx.core.json.JsonObject().put("query", search.toLowerCase());
-            io.vertx.core.json.JsonObject addressJson = new io.vertx.core.json.JsonObject().put("address", termJson);
-            io.vertx.core.json.JsonObject matchJson = new io.vertx.core.json.JsonObject().put("match", addressJson);
-            io.vertx.core.json.JsonObject fieldJson = new io.vertx.core.json.JsonObject().put("field", "address_suggest");
-            io.vertx.core.json.JsonObject completionJson = new io.vertx.core.json.JsonObject().put("completion", fieldJson);
-            io.vertx.core.json.JsonObject prefixJson = new io.vertx.core.json.JsonObject().put("prefix", search.toLowerCase()).mergeIn(completionJson);
-            io.vertx.core.json.JsonObject suggestAddressJson = new io.vertx.core.json.JsonObject().put("address", prefixJson);
-            io.vertx.core.json.JsonObject suggestJson = new io.vertx.core.json.JsonObject().put("suggest", suggestAddressJson);
-            io.vertx.core.json.JsonObject sortJson = new io.vertx.core.json.JsonObject().put("sort", new io.vertx.core.json.JsonArray().add("_score"));
-            io.vertx.core.json.JsonObject sourceJson = new io.vertx.core.json.JsonObject().put("_source", new io.vertx.core.json.JsonArray().add("*"));
-            queryJson = String.join(",",
-                    matchJson.encode(),
-                    sortJson.encode(),
-                    sourceJson.encode(),
-                    suggestJson.encode());
-        }
-        log.info(">>> JSON " + queryJson);
-        searchSourceBuilder.query(QueryBuilders.wrapperQuery(queryJson));
-        searchRequest.source(searchSourceBuilder);
-        SearchResponse searchResponse = null;
-        try {
-            searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new ArrayList<>();
-        }
-        SearchHits hits = searchResponse.getHits();
-        List<OneAddress> results = new ArrayList<>(hits.getHits().length);
-        for (SearchHit hit : hits.getHits()) {
-            String sourceAsString = hit.getSourceAsString();
-            float score = hit.getScore();
-            io.vertx.core.json.JsonObject json = new io.vertx.core.json.JsonObject(sourceAsString);
-            OneAddress address = json.mapTo(OneAddress.class);
-            address.setScore(BigDecimal.valueOf(score));
-            results.add(address);
-        }
-        // FIXME - resort based on _score, annoying since its sorted from ES
-        results.sort(Comparator.reverseOrder());
-        log.info(">>> search returned");
-        return results;
-    }
-
-    /*
-      Search using elastic completion suggester.
-      We want ONE call to ES here to keep things fast.
-      This requires the data is engineered into a single oneaddress.address text field first.
-     */
-    @Query
-    @Description("Search oneaddress by search term")
-    public List<OneAddress> oneaddresses(@Name("search") String search, @Name("size") Optional<Integer> size) {
-        String finalSearch = (search == null) ? "" : search.trim().toLowerCase();
-        log.info(">>> Final Search Words: finalSearch(" + finalSearch + ")");
-        return _fetchHighLevelClient(search);
-
-        // Does not perform as well
-        //ElasticsearchSearchResult<JsonObject> result = _search(finalSearch, size);
-        //log.info(">>> search returned");
-        //return _processSearch(result);
     }
 
     /*
@@ -472,5 +486,35 @@ public class AddressResource {
         JsonObject object = new JsonObject();
         instructions.accept(object);
         return object;
+    }
+
+    public String _readFile(String fileName) {
+        String contents = null;
+        try (InputStream inputStream = getClass().getResourceAsStream(fileName);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            contents = reader.lines()
+                    .collect(Collectors.joining(System.lineSeparator()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return contents;
+    }
+
+    // _addJson(jsonObject, "ab.g", "foo2");
+    private static void _addJson(io.vertx.core.json.JsonObject jsonObject, String key, String value) {
+        if (key.contains(".")) {
+            String innerKey = key.substring(0, key.indexOf("."));
+            String remaining = key.substring(key.indexOf(".") + 1);
+
+            if (jsonObject.containsKey(innerKey)) {
+                _addJson(jsonObject.getJsonObject(innerKey), remaining, value);
+            } else {
+                io.vertx.core.json.JsonObject innerJson = new io.vertx.core.json.JsonObject();
+                jsonObject.put(innerKey, innerJson);
+                _addJson(innerJson, remaining, value);
+            }
+        } else {
+            jsonObject.put(key, value);
+        }
     }
 }
