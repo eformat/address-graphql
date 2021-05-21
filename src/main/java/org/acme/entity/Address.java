@@ -22,6 +22,9 @@ public class Address extends PanacheEntity {
     public String lot_number_prefix;
     public String lot_number;
     public String lot_number_suffix;
+
+    @FullTextField(analyzer = "flatType")
+    @KeywordField(name = "flat_type_sort", searchable = Searchable.YES, sortable = Sortable.YES, normalizer = "sort")
     public String flat_type;
     public String flat_number_prefix;
 
